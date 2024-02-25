@@ -69,5 +69,5 @@ kotlin-ide/
 /app/build/
 /kls_database.db
 
-
+app/src/main/resources/data/shows.csv
 
