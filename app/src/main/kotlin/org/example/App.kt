@@ -1,13 +1,15 @@
+/**
+ * Entry point for the application
+ * @author Justin Forseth
+ */
 package org.example
 
-import jaco.mp3.player.MP3Player
 import java.net.URL
 import javax.swing.JOptionPane
 
 
-
 /**
- * Entry point for the application
+ * Checks connectivity, creates the UI and displays it
  */
 fun main() {    // Check connection
     try {

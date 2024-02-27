@@ -1,3 +1,6 @@
+/**
+ * @author Justin Forseth
+ */
 package org.example
 
 import java.net.URL

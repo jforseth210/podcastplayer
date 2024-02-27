@@ -1,3 +1,6 @@
+/**
+ * @author Justin Forseth
+ */
 package org.example
 
 import org.apache.commons.lang3.StringEscapeUtils

@@ -1,3 +1,7 @@
+/**
+ * These functions handle reading, parsing, and writing show data.
+ * @author Justin Forseth
+ */
 package org.example
 
 import org.apache.commons.csv.CSVFormat

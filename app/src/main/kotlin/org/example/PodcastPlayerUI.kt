@@ -1,3 +1,7 @@
+/**
+ * The GUI of the program
+ * @author Justin Forseth
+ */
 package org.example
 
 import jaco.mp3.player.MP3Player
@@ -10,8 +14,11 @@ import javax.imageio.ImageIO
 import javax.swing.*
 
 class PodcastPlayerUI(title: String, private val podcastService: PodcastService) : JFrame() {
+  // JList of shows
   private val showList = JList<Show>()
+  // Panel containing show information and episodes
   private val showViewPanel = JPanel(BorderLayout())
+  // Handles audio playback
   private var player = MP3Player()
 
   init {
@@ -85,7 +92,6 @@ class PodcastPlayerUI(title: String, private val podcastService: PodcastService)
 
   private fun drawShows() {
     this.showList.setListData(podcastService.shows.toTypedArray())
-    writeShows(podcastService.shows)
   }
   private fun drawShowInfo() {
     showViewPanel.removeAll()
