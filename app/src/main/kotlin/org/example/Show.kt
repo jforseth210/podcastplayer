@@ -2,94 +2,93 @@ package org.example
 
 import org.apache.commons.lang3.StringEscapeUtils
 import org.w3c.dom.Document
-import org.w3c.dom.Element
-import org.w3c.dom.Node
 import java.awt.Image
 import java.net.URL
-import javax.imageio.ImageIO
-import javax.xml.parsers.DocumentBuilder
-import javax.xml.parsers.DocumentBuilderFactory
 
+/**
+ * A class to represent a podcast, with the title, description, show image, episodes,
+ * and the url of the rss feed.
+ */
+class Show(val title: String, val url: URL) {
+  private val doc: Document? by lazy { loadShowDoc() }
+  // The published description of the podcast
+  val description: String by lazy {loadDescription()}
 
-class Show(val title: String, val url: String) {
-  private var showDataLoaded = false
-  private var showDataLoading = false
-  var description: String? = null
-    get() {
-      loadShowData()
-      return field
-    }
-  var image: Image? = null
-    get() {
-      loadShowData()
-      return field
-    }
-  var episodes: MutableList<Episode> = mutableListOf()
-    get() {
-      loadShowData()
-      return field
-    }
+  // The cover art for the podcast
+  val image: Image?  by lazy { loadShowImage() }
+  // A list of podcast episodes
+  val episodes: MutableList<Episode>? by lazy{loadEpisodes()}
 
+  /**
+   * Download the show RSS feed
+   */
+  private fun loadShowDoc(): Document? {
+    return loadDocFromURL(url)
+  }
+
+  /**
+   * Parse the show description from the RSS feed
+   */
+  private fun loadDescription(): String {
+    if (this.doc != null) {
+      return loadDescriptionFromDocument(this.doc!!)
+    }
+    return ""
+  }
+
+  /**
+   * Load and scale the show image from the RSS feed
+   */
+  private fun loadShowImage(): Image? {
+    if (this.doc != null) {
+      return loadShowImageFromDocument(this.doc!!)
+    }
+    return null
+  }
+
+  /**
+   * Parse show episodes
+   */
+  private fun loadEpisodes(): MutableList<Episode>? {
+    if (this.doc != null) {
+    return loadEpisodesFromDocument(this.doc!!)
+    }
+    return null
+  }
+
+  /**
+   * Attempt to load the show to see if it's valid XML
+   */
+  fun isValid(): Boolean{
+    return this.doc != null
+  }
+  /**
+   * Convert the show to an escaped csv row with the title and url
+   */
+  fun toCSV(): String {
+    val escapedTitle = StringEscapeUtils.escapeCsv(title)
+    val escapedURL = StringEscapeUtils.escapeCsv(url.toString())
+    return "$escapedTitle,$escapedURL"
+  }
+
+  /**
+   * Overridden toString() to show only the title in jlists
+   */
   override fun toString(): String {
     return title
   }
 
+  /**
+   * Overridden equals, Two shows should be the same if they have the same url.
+   */
   override fun equals(other: Any?): Boolean {
-    return other is Show && url == other.url
-  }
-  fun loadShowData() {
-    if (showDataLoaded) return
-    if (showDataLoading) return
-    showDataLoading = true
-    val builderFactory: DocumentBuilderFactory = DocumentBuilderFactory.newInstance()
-    val docBuilder: DocumentBuilder = builderFactory.newDocumentBuilder()
-    val doc: Document = docBuilder.parse(this.url)
-    doc.documentElement.normalize()
-    this.description =
-      doc.getElementsByTagName("description").item(0).textContent.replace("<br />", "\n")
-    loadShowImage(doc)
-    loadEpisodes(doc)
-    showDataLoading = false
-    showDataLoaded = true
-  }
-  private fun loadShowImage(doc: Document) {
-    if (doc.getElementsByTagName("image").item(0) == null) {
-      return
-    }
-    val imageURLString =
-      (doc.getElementsByTagName("image").item(0) as Element)
-        .getElementsByTagName("url")
-        .item(0)
-        .textContent
-    this.image = ImageIO.read(URL(imageURLString)).getScaledInstance(64, 64, Image.SCALE_SMOOTH)
-  }
-  private fun loadEpisodes(doc: Document) {
-    val episodeNodes = doc.getElementsByTagName("item")
-    for (i in 0 until episodeNodes.length) {
-      val episode = episodeNodes.item(i)
-      if (episode.nodeType == Node.ELEMENT_NODE) {
-        this.episodes.add(
-          Episode(
-            (episode as Element)
-              .getElementsByTagName("title")
-              .item(0)
-              .textContent,
-            (episode.getElementsByTagName("enclosure").item(0) as Element)
-              .getAttribute("url")
-          )
-        )
-      }
-    }
-  }
-  fun toCSV(): String {
-    val escapedTitle = StringEscapeUtils.escapeCsv(title)
-    val escapedURL = StringEscapeUtils.escapeCsv(url)
-    return "$escapedTitle,$escapedURL"
+    return other is Show && url.toString() == other.url.toString()
   }
 
+  /**
+   * Override hashCode to match equals
+   */
   override fun hashCode(): Int {
-    var result = title.hashCode()
-    result = 31 * result + url.hashCode()
-    return result
+    return url.toString().hashCode()
   }
 }

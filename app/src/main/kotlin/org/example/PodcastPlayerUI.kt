@@ -3,42 +3,46 @@ package org.example
 import jaco.mp3.player.MP3Player
 import java.awt.BorderLayout
 import java.awt.Dimension
-import java.awt.FileDialog
 import java.awt.GridLayout
-import java.io.File
+import java.net.MalformedURLException
 import java.net.URL
 import javax.imageio.ImageIO
 import javax.swing.*
 
-class PodcastPlayerUI(title: String) : JFrame() {
+class PodcastPlayerUI(title: String, private val podcastService: PodcastService) : JFrame() {
   private val showList = JList<Show>()
   private val showViewPanel = JPanel(BorderLayout())
+  private var player = MP3Player()
 
   init {
     createUI(title)
   }
 
   private fun createUI(title: String) {
-
+    // Some basic setup
     setTitle(title)
-
     defaultCloseOperation = EXIT_ON_CLOSE
     setSize(400, 300)
     setLocationRelativeTo(null)
+
+    // Panel containing all other UI elements
     val masterPanel = JPanel(BorderLayout())
     this.contentPane.add(masterPanel)
+
     val showPanel = JPanel(BorderLayout())
     masterPanel.add(showPanel, BorderLayout.WEST)
     drawShows()
     this.showList.addListSelectionListener {
-      selectedShow = shows[showList.selectedIndex]
+      if(showList.selectedIndex <0) return@addListSelectionListener
+      podcastService.selectShow(showList.selectedIndex)
       drawShowInfo()
     }
     showPanel.add(JScrollPane(showList), BorderLayout.CENTER)
     val showButtonPanel = JPanel(GridLayout(1, 2))
     val importOPMLButton = JButton("Import OPML")
     importOPMLButton.addActionListener {
-        addOPML(this)
+      val file = pickFile(this) ?: return@addActionListener
+      podcastService.addOPML(file)
         drawShows()
     }
     showButtonPanel.add(importOPMLButton)
@@ -57,15 +61,21 @@ class PodcastPlayerUI(title: String) : JFrame() {
   private fun addShow() {
     val titleInput = JOptionPane.showInputDialog("Enter podcast name:")
     val urlInput = JOptionPane.showInputDialog("Enter podcast rss feed:")
-    val show = Show(titleInput, urlInput)
-    if (shows.contains(show)) {
+
+    val show: Show
+    try {
+      show = Show(titleInput, URL(urlInput))
+    } catch (e:MalformedURLException){
+      JOptionPane.showMessageDialog(null,"Invalid URL, please double check and try again")
+      return
+    }
+    if (podcastService.hasShow(show)) {
       JOptionPane.showMessageDialog(null, "Show already added")
       return
     }
-    try {
-      show.loadShowData()
-      shows.add(show)
-    } catch (e: Exception) {
+    if (show.isValid()){
+      podcastService.addShow(show)
+    } else {
       JOptionPane.showMessageDialog(
         null,
         "Invalid show URL. Please double check it's an rss feed and try again."
@@ -74,8 +84,8 @@ class PodcastPlayerUI(title: String) : JFrame() {
   }
 
   private fun drawShows() {
-    this.showList.setListData(shows.toTypedArray())
-    writeShows(shows)
+    this.showList.setListData(podcastService.shows.toTypedArray())
+    writeShows(podcastService.shows)
   }
   private fun drawShowInfo() {
     showViewPanel.removeAll()
@@ -83,17 +93,17 @@ class PodcastPlayerUI(title: String) : JFrame() {
     val showImage =
       JLabel(
         ImageIcon(
-          selectedShow?.image
+          podcastService.selectedShow?.image
             ?: ImageIO.read(URL("https://picsum.photos/64")),
         ),
       )
-    val showTitle = JLabel(selectedShow?.title ?: "Select a Show")
+    val showTitle = JLabel(podcastService.selectedShow?.title ?: "Select a Show")
     showHeaderPanel.add(showImage, BorderLayout.WEST)
     showHeaderPanel.add(showTitle, BorderLayout.CENTER)
 
     val showBodyPanel = JPanel(BorderLayout())
     val showDescription = JTextArea(2, 20)
-    showDescription.text = selectedShow?.description ?: ""
+    showDescription.text = podcastService.selectedShow?.description ?: ""
     showDescription.wrapStyleWord = true
     showDescription.lineWrap = true
     showDescription.isOpaque = false
@@ -106,12 +116,12 @@ class PodcastPlayerUI(title: String) : JFrame() {
     showDescriptionScrollPane.preferredSize = Dimension(10000, 175)
     showBodyPanel.add(showDescriptionScrollPane, BorderLayout.NORTH)
     val episodeList = JList<Episode>()
-    episodeList.setListData(selectedShow?.episodes?.toTypedArray() ?: arrayOf<Episode>())
+    episodeList.setListData(podcastService.selectedShow?.episodes?.toTypedArray() ?: arrayOf<Episode>())
     episodeList.addListSelectionListener {
-      val selectedEpisode = selectedShow?.episodes?.get(episodeList.selectedIndex)
+      val selectedEpisode = podcastService.selectedShow?.episodes?.get(episodeList.selectedIndex)
       if (selectedEpisode != null) {
         player.stop()
-        player = MP3Player(URL(selectedEpisode.url))
+        player = MP3Player(selectedEpisode.url)
         player.play()
       }
     }
@@ -134,25 +144,4 @@ class PodcastPlayerUI(title: String) : JFrame() {
     showViewPanel.validate()
     showViewPanel.repaint()
   }
-  fun pickFile(frame: JFrame): File? {
-    val dialog = FileDialog(frame)
-    dialog.isVisible = true
-    if (dialog.file == null) {
-      return null
-    }
-    return File(dialog.directory, dialog.file)
-  }
-fun addOPML(frame: JFrame) {
-  val file = pickFile(frame)
-  if (file != null) {
-
-    val parsedShows = parseOPML(file)
-    for (parsedShow in parsedShows) {
-      if (!shows.contains(parsedShow)) {
-        shows.add(parsedShow)
-      }
-    }
-  }
-
-}
 }
